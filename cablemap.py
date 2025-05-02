@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import argparse
+import signal
 from pathlib import Path
 from collections import defaultdict
 from urllib.request import urlopen, Request
@@ -187,6 +188,13 @@ class CableMap:
             print(f"{s['name']:40}  "
                   f"{s['latitude']:>8.3f}, {s['longitude']:>8.3f}  "
                   f"{s['country']} / {s['continent']}")
+
+# ── make “head | …” silent on EPIPE ───────────────────────────────────────────
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+# ───────────────────────────────────────────────────────────────────────────────
+
+
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # CLI
