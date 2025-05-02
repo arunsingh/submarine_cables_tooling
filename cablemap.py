@@ -64,16 +64,38 @@ def fetch_feed(force: bool = False) -> Dict:
     Download & cache the *two* v3‑API geojson files,
     then combine them under one key so the rest of the
     script remains unchanged.
-    """
-    if not force and CACHE_FILE.exists() and time.time()-CACHE_FILE.stat().st_mtime < CACHE_TTL:
-        with CACHE_FILE.open() as fh: return json.load(fh)
+    Patch 3: 
+    Load cached merged feed or download fresh copies of both geo‑json
+    endpoints.  If the cache is missing OR older than CACHE_TTL OR
+    unreadable, we fetch again.
 
+    What I did:
+    If the cache can’t be decoded, we log a warning, delete/overwrite it, 
+    and continue. No more JSONDecodeError bubbling up to the CLI.
+    """
+    cache_ok = (
+        CACHE_FILE.exists()
+        and time.time() - CACHE_FILE.stat().st_mtime < CACHE_TTL
+        and not force
+    )
+    if cache_ok:
+        try:
+            with CACHE_FILE.open("r") as fh:
+                return json.load(fh)
+        except (JSONDecodeError, OSError) as bad_cache:
+            print("[WARN] cache unreadable – re‑downloading …")
+            # fall through to fresh download
+
+    # --- fresh download section ---
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     print("Downloading TeleGeography v3 geojson …")
     cable   = _download_json(CABLE_GEO_URL)
     landing = _download_json(LANDING_GEO_URL)
-    merged  = {"objects":{"cables":cable,"landing_points":landing}}
-    with CACHE_FILE.open("w") as fh: json.dump(merged, fh)
+    merged  = {"objects": {"cables": cable, "landing_points": landing}}
+
+    with CACHE_FILE.open("w") as fh:
+        json.dump(merged, fh)
+
     return merged
 
 
